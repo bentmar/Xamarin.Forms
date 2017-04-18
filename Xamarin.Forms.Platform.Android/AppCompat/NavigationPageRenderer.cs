@@ -34,6 +34,7 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 		Drawable _backgroundDrawable;
 		Page _current;
 
+		string _defaultNavigationContentDescription;
 		bool _disposed;
 		ActionBarDrawerToggle _drawerToggle;
 		FragmentManager _fragmentManager;
@@ -80,6 +81,8 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 		FragmentManager FragmentManager	=> _fragmentManager ?? (_fragmentManager = ((FormsAppCompatActivity)Context).SupportFragmentManager);
 
 		IPageController PageController => Element as IPageController;
+
+		INavigationPageController NavigationPageController => Element as INavigationPageController;
 
 		bool ToolbarVisible
 		{
@@ -189,7 +192,7 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 						renderer?.Dispose();
 					}
 
-					var navController = (INavigationPageController)Element;
+					var navController = NavigationPageController;
 
 					navController.PushRequested -= OnPushed;
 					navController.PopRequested -= OnPopped;
@@ -461,7 +464,7 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 
 		Task<bool> OnPopViewAsync(Page page, bool animated)
 		{
-			Page pageToShow = ((INavigationPageController)Element).Peek(1);
+			Page pageToShow = NavigationPageController.Peek(1);
 			if (pageToShow == null)
 				return Task.FromResult(false);
 
@@ -658,10 +661,10 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 				if (!removed)
 				{
 					UpdateToolbar();
-					if (_drawerToggle != null && ((INavigationPageController)Element).StackDepth == 2)
+					if (_drawerToggle != null && NavigationPageController.StackDepth == 2)
 						AnimateArrowIn();
 				}
-				else if (_drawerToggle != null && ((INavigationPageController)Element).StackDepth == 2)
+				else if (_drawerToggle != null && NavigationPageController.StackDepth == 2)
 					AnimateArrowOut();
 
 				Device.StartTimer(TimeSpan.FromMilliseconds(TransitionDuration), () =>
@@ -737,6 +740,7 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 					IMenuItem menuItem = menu.Add(item.Text);
 					menuItem.SetEnabled(controller.IsEnabled);
 					menuItem.SetOnMenuItemClickListener(new GenericMenuClickListener(controller.Activate));
+					menuItem.SetTitleOrContentDescription(item);
 				}
 				else
 				{
@@ -751,6 +755,7 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 					menuItem.SetEnabled(controller.IsEnabled);
 					menuItem.SetShowAsAction(ShowAsAction.Always);
 					menuItem.SetOnMenuItemClickListener(new GenericMenuClickListener(controller.Activate));
+					menuItem.SetTitleOrContentDescription(item);
 				}
 			}
 		}
@@ -768,7 +773,7 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 			if (bar == null)
 				return;
 
-			bool isNavigated = ((INavigationPageController)Element).StackDepth > 1;
+			bool isNavigated = NavigationPageController.StackDepth > 1;
 			bar.NavigationIcon = null;
 
 			if (isNavigated)
@@ -784,6 +789,9 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 					var icon = new DrawerArrowDrawable(activity.SupportActionBar.ThemedContext);
 					icon.Progress = 1;
 					bar.NavigationIcon = icon;
+
+					var prevPage = Element.Peek(1);
+					_defaultNavigationContentDescription = bar.SetNavigationContentDescription(prevPage, _defaultNavigationContentDescription);
 				}
 			}
 			else
